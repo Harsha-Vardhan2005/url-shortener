@@ -46,7 +46,7 @@ const initDB = async () => {
         CREATE TABLE IF NOT EXISTS urls (
           id SERIAL PRIMARY KEY,
           original_url VARCHAR(2048) NOT NULL,  
-          short_code VARCHAR(10) UNIQUE NOT NULL,
+          short_code VARCHAR(100) UNIQUE NOT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           expires_at TIMESTAMP,
           click_count INTEGER DEFAULT 0,
