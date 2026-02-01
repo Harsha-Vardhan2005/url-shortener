@@ -61,31 +61,6 @@ app.get('/', (req, res) => {
   });
 });
 
-app.post('/__admin/reset-db', async (req, res) => {
-  try {
-    const { query } = require('./config/database');
-
-    await query(`DROP TABLE IF EXISTS urls;`);
-    await query(`
-      CREATE TABLE urls (
-        id SERIAL PRIMARY KEY,
-        original_url VARCHAR(2048) NOT NULL,
-        short_code VARCHAR(50) UNIQUE NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        expires_at TIMESTAMP,
-        click_count INTEGER DEFAULT 0,
-        last_accessed TIMESTAMP,
-        user_ip VARCHAR(45),
-        is_custom BOOLEAN DEFAULT FALSE
-      );
-    `);
-
-    res.json({ success: true, message: 'DB reset complete' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'DB reset failed' });
-  }
-});
 
 
 // 404 handler - must come after all routes
