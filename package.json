@@ -1,0 +1,38 @@
+{
+  "name": "url-shortener",
+  "version": "1.0.0",
+  "description": "Scalable URL shortener with Redis caching and analytics",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest --coverage",
+    "migrate": "node src/config/migrate.js"
+  },
+  "keywords": [
+    "url-shortener",
+    "system-design",
+    "nodejs",
+    "redis",
+    "postgresql"
+  ],
+  "author": "CB Harsha Vardhan",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "pg": "^8.11.3",
+    "redis": "^4.6.10",
+    "dotenv": "^16.3.1",
+    "express-rate-limit": "^7.1.5",
+    "cors": "^2.8.5",
+    "validator": "^13.11.0",
+    "nanoid": "^3.3.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "jest": "^29.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

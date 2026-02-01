@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Shortener - System Design Project</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f172a;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Animated background circles */
+        body::before, body::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.15;
+            animation: float 20s infinite ease-in-out;
+        }
+
+        body::before {
+            width: 500px;
+            height: 500px;
+            background: #3b82f6;
+            top: -200px;
+            left: -200px;
+        }
+
+        body::after {
+            width: 400px;
+            height: 400px;
+            background: #8b5cf6;
+            bottom: -150px;
+            right: -150px;
+            animation-delay: -10s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(50px, 50px) scale(1.1); }
+        }
+
+        .container {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 550px;
+            width: 100%;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 35px;
+        }
+
+        h1 {
+            color: #fff;
+            font-size: 2rem;
+            margin-bottom: 8px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            color: #94a3b8;
+            font-size: 0.95rem;
+            font-weight: 400;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #e2e8f0;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            font-size: 15px;
+            color: #fff;
+            transition: all 0.3s;
+        }
+
+        input[type="text"]::placeholder,
+        input[type="number"]::placeholder {
+            color: #64748b;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background: rgba(15, 23, 42, 0.7);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        button:hover::before {
+            left: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result {
+            margin-top: 25px;
+            padding: 20px;
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            border-radius: 10px;
+            display: none;
+        }
+
+        .result.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result h3 {
+            color: #22c55e;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .short-url {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .short-url input {
+            flex: 1;
+            padding: 12px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid #3b82f6;
+            border-radius: 8px;
+            font-size: 15px;
+            color: #3b82f6;
+            font-weight: 500;
+        }
+
+        .copy-btn {
+            padding: 12px 24px;
+            background: #3b82f6;
+            width: auto;
+            flex-shrink: 0;
+        }
+
+        .copy-btn:hover {
+            background: #2563eb;
+        }
+
+        .copy-btn.copied {
+            background: #22c55e;
+        }
+
+        .error {
+            margin-top: 20px;
+            padding: 14px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            color: #fca5a5;
+            display: none;
+            font-size: 0.9rem;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .stats {
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 8px;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .stats-row:last-child {
+            border-bottom: none;
+        }
+
+        .stats-label {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        .stats-value {
+            color: #e2e8f0;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #64748b;
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 1.75rem;
+            }
+
+            .options {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 URL Shortener</h1>
+            <p class="subtitle">Transform long links into short, shareable URLs</p>
+        </div>
+
+        <form id="shortenForm">
+            <div class="input-group">
+                <label for="url">Enter your URL</label>
+                <input 
+                    type="text" 
+                    id="url" 
+                    name="url" 
+                    placeholder="https://example.com/long/url/here"
+                    required
+                >
+            </div>
+
+            <div class="options">
+                <div class="input-group">
+                    <label for="customCode">Custom Code (optional)</label>
+                    <input 
+                        type="text" 
+                        id="customCode" 
+                        name="customCode" 
+                        placeholder="my-link"
+                        pattern="[A-Za-z0-9]+"
+                        maxlength="10"
+                    >
+                </div>
+
+                <div class="input-group">
+                    <label for="expirationDays">Expires in (days)</label>
+                    <input 
+                        type="number" 
+                        id="expirationDays" 
+                        name="expirationDays" 
+                        placeholder="365"
+                        min="1"
+                        max="3650"
+                    >
+                </div>
+            </div>
+
+            <button type="submit" id="submitBtn">
+                <span id="btnText">Shorten URL</span>
+                <span id="btnLoading" style="display: none;"><span class="loading"></span></span>
+            </button>
+        </form>
+
+        <div class="error" id="errorDiv"></div>
+
+        <div class="result" id="resultDiv">
+            <h3 style="color: #667eea; margin-bottom: 15px;">✅ Success!</h3>
+            <div class="short-url">
+                <input type="text" id="shortUrlInput" readonly>
+                <button class="copy-btn" id="copyBtn">Copy</button>
+            </div>
+            <div class="stats" id="statsDiv"></div>
+        </div>
+
+        <div class="footer">
+            System Design Project 
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin; // Uses same domain as backend
+        const form = document.getElementById('shortenForm');
+        const errorDiv = document.getElementById('errorDiv');
+        const resultDiv = document.getElementById('resultDiv');
+        const shortUrlInput = document.getElementById('shortUrlInput');
+        const copyBtn = document.getElementById('copyBtn');
+        const submitBtn = document.getElementById('submitBtn');
+        const btnText = document.getElementById('btnText');
+        const btnLoading = document.getElementById('btnLoading');
+        const statsDiv = document.getElementById('statsDiv');
+
+        // Handle form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Hide previous results/errors
+            errorDiv.classList.remove('show');
+            resultDiv.classList.remove('show');
+
+            // Get form data
+            const url = document.getElementById('url').value.trim();
+            const customCode = document.getElementById('customCode').value.trim();
+            const expirationDays = document.getElementById('expirationDays').value;
+
+            // Validate URL format
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                showError('Please enter a valid URL starting with http:// or https://');
+                return;
+            }
+
+            // Prepare request body
+            const body = { url };
+            if (customCode) body.customCode = customCode;
+            if (expirationDays) body.expirationDays = parseInt(expirationDays);
+
+            // Show loading
+            submitBtn.disabled = true;
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/shorten`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult(data.data);
+                } else {
+                    showError(data.error?.message || 'Failed to shorten URL');
+                }
+            } catch (error) {
+                showError('Network error. Please check if the server is running.');
+            } finally {
+                // Hide loading
+                submitBtn.disabled = false;
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+            }
+        });
+
+        // Show error message
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+        }
+
+        // Show result
+        function showResult(data) {
+            shortUrlInput.value = data.shortUrl;
+            
+            // Build stats HTML
+            const createdDate = new Date(data.createdAt).toLocaleDateString();
+            const expiresDate = data.expiresAt ? new Date(data.expiresAt).toLocaleDateString() : 'Never';
+            
+            statsDiv.innerHTML = `
+                <div class="stats-row">
+                    <span class="stats-label">Short Code:</span>
+                    <span class="stats-value">${data.shortCode}</span>
+                </div>
+                <div class="stats-row">
+                    <span class="stats-label">Created:</span>
+                    <span class="stats-value">${createdDate}</span>
+                </div>
+                <div class="stats-row">
+                    <span class="stats-label">Expires:</span>
+                    <span class="stats-value">${expiresDate}</span>
+                </div>
+            `;
+            
+            resultDiv.classList.add('show');
+            copyBtn.textContent = 'Copy';
+            copyBtn.classList.remove('copied');
+        }
+
+        // Copy to clipboard
+        copyBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(shortUrlInput.value);
+                copyBtn.textContent = '✓ Copied!';
+                copyBtn.classList.add('copied');
+                
+                setTimeout(() => {
+                    copyBtn.textContent = 'Copy';
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+            } catch (error) {
+                // Fallback for older browsers
+                shortUrlInput.select();
+                document.execCommand('copy');
+                copyBtn.textContent = '✓ Copied!';
+            }
+        });
+
+        // Allow only alphanumeric in custom code
+        document.getElementById('customCode').addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/[^A-Za-z0-9]/g, '');
+        });
+    </script>
+</body>
+</html>
