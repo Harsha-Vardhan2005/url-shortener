@@ -42,13 +42,17 @@ const query = async (text, params) => {
 const initDB = async () => {
   try {
     await query(`
-      CREATE TABLE IF NOT EXISTS urls (
-        id SERIAL PRIMARY KEY,
-        long_url TEXT NOT NULL,
-        short_code VARCHAR(50) UNIQUE NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        click_count INTEGER DEFAULT 0
-      );
+        CREATE TABLE IF NOT EXISTS urls (
+          id SERIAL PRIMARY KEY,
+          original_url VARCHAR(2048) NOT NULL,  // Change from long_url
+          short_code VARCHAR(10) UNIQUE NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          expires_at TIMESTAMP,
+          click_count INTEGER DEFAULT 0,
+          last_accessed TIMESTAMP,
+          user_ip VARCHAR(45),
+          is_custom BOOLEAN DEFAULT FALSE
+        );
     `);
 
     console.log("✅ Database initialized (urls table ready)");
