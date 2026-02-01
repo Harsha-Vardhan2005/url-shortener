@@ -44,7 +44,7 @@ const initDB = async () => {
     await query(`
         CREATE TABLE IF NOT EXISTS urls (
           id SERIAL PRIMARY KEY,
-          original_url VARCHAR(2048) NOT NULL,  // Change from long_url
+          original_url VARCHAR(2048) NOT NULL,  
           short_code VARCHAR(10) UNIQUE NOT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           expires_at TIMESTAMP,
