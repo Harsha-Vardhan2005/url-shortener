@@ -41,6 +41,7 @@ const query = async (text, params) => {
 // 🔥 NEW: Initialize DB schema (runs once on startup)
 const initDB = async () => {
   try {
+    await query(`DROP TABLE IF EXISTS urls CASCADE;`);
     await query(`
         CREATE TABLE IF NOT EXISTS urls (
           id SERIAL PRIMARY KEY,
