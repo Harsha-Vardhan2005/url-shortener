@@ -110,7 +110,7 @@ url-shortener/
 ![URL Result](results/result.png)
 
 ### Analytics Dashboard 
-![Analytics](analytics/analytics.png)
+![Analytics](results/analytics.png)
 
 ## Key System Design Decisions
 
