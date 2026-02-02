@@ -4,13 +4,10 @@ require("dotenv").config();
 // Create PostgreSQL connection pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl:
-    process.env.NODE_ENV === "production"
-      ? { rejectUnauthorized: false }
-      : false,
+  ssl: false,  // Change this - Internal URL doesn't need SSL
   max: 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 10000,  // Increase this
 });
 
 // Test database connection
@@ -44,14 +41,19 @@ const query = async (text, params) => {
 // 🔥 NEW: Initialize DB schema (runs once on startup)
 const initDB = async () => {
   try {
+    await query(`DROP TABLE IF EXISTS urls CASCADE;`);
     await query(`
-      CREATE TABLE IF NOT EXISTS urls (
-        id SERIAL PRIMARY KEY,
-        long_url TEXT NOT NULL,
-        short_code VARCHAR(50) UNIQUE NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        click_count INTEGER DEFAULT 0
-      );
+        CREATE TABLE IF NOT EXISTS urls (
+          id SERIAL PRIMARY KEY,
+          original_url VARCHAR(2048) NOT NULL,  
+          short_code VARCHAR(100) UNIQUE NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          expires_at TIMESTAMP,
+          click_count INTEGER DEFAULT 0,
+          last_accessed TIMESTAMP,
+          user_ip VARCHAR(45),
+          is_custom BOOLEAN DEFAULT FALSE
+        );
     `);
 
     console.log("✅ Database initialized (urls table ready)");
