@@ -64,9 +64,9 @@ Converts long URLs into short, shareable links with:
 - `validator` - Input sanitization
 
 **Deployment:**
-- AWS EC2 / Render.com
+- Render.com
 - PM2 for process management
-- NGINX for reverse proxy (optional)
+- NGINX for reverse proxy 
 
 ## Project Structure
 
@@ -110,7 +110,7 @@ url-shortener/
 ![URL Result](results/result.png)
 
 ### Analytics Dashboard 
-![Analytics](results/analytics.png)
+![Analytics](results/analytics1.png)
 
 ## Key System Design Decisions
 
@@ -128,7 +128,7 @@ url-shortener/
 ### Prerequisites
 - Node.js 18+
 - PostgreSQL 15+
-- Redis 7+ (optional but recommended)
+- Redis 7+ 
 
 ### Installation
 
@@ -182,7 +182,7 @@ Response:
 {
   "success": true,
   "data": {
-    "shortUrl": "http://localhost:3000/my-link",
+    "shortUrl": "http://localhost:3000/mylink",
     "shortCode": "my-link",
     "originalUrl": "https://example.com/very/long/url",
     "createdAt": "2024-01-30T10:00:00.000Z",
@@ -247,17 +247,10 @@ CREATE INDEX idx_created_at ON urls(created_at DESC);
 
 ## Deployment
 
-### Option 1: Render.com (Free)
-- Easiest deployment
-- Free PostgreSQL included
-- Auto-deploy from GitHub
-- See: [docs/RENDER_DEPLOYMENT.md](docs/RENDER_DEPLOYMENT.md)
-
-### Option 2: AWS (Free Tier)
-- EC2 t2.micro
-- RDS PostgreSQL
-- ElastiCache Redis
-- See: [docs/AWS_DEPLOYMENT.md](docs/AWS_DEPLOYMENT.md)
+Live Demo:- https://url-shortener-gppt.onrender.com/
+Successfully deployed on Render using 
+- PostgreSQL managed database
+- Auto deploy from github
 
 ## Testing
 
