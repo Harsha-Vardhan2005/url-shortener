@@ -3,21 +3,13 @@ const { validateUrl, validateCustomCode, validateExpirationDays } = require('../
 const { sanitizeCustomCode } = require('../utils/shortCodeGenerator');
 const { cacheGet, cacheSet, cacheDel } = require('../config/redis');
 const { AppError } = require('../middleware/errorHandler');
+const { urlsCreatedTotal, urlRedirectsTotal } = require('../config/metrics');
 
-/**
- * URL Controller - Handles URL shortening business logic
- */
 class UrlController {
-  /**
-   * Shorten a URL
-   * POST /api/shorten
-   * Body: { url, customCode?, expirationDays? }
-   */
   static async shortenUrl(req, res, next) {
     try {
       const { url, customCode, expirationDays } = req.body;
 
-      // Validate URL
       const urlValidation = validateUrl(url);
       if (!urlValidation.isValid) {
         throw new AppError(urlValidation.error, 400);
@@ -25,24 +17,6 @@ class UrlController {
 
       const originalUrl = urlValidation.sanitizedUrl;
 
-      // COMMENTED OUT: Allow same URL to have multiple short codes (including custom ones)
-      // const existingUrl = await UrlModel.findByOriginalUrl(originalUrl);
-      // if (existingUrl) {
-      //   const shortUrl = `${process.env.BASE_URL}/${existingUrl.short_code}`;
-      //   return res.status(200).json({
-      //     success: true,
-      //     data: {
-      //       shortUrl,
-      //       shortCode: existingUrl.short_code,
-      //       originalUrl: existingUrl.original_url,
-      //       createdAt: existingUrl.created_at,
-      //       expiresAt: existingUrl.expires_at,
-      //       message: 'URL already shortened',
-      //     },
-      //   });
-      // }
-
-      // Handle custom short code
       let shortCode;
       let isCustom = false;
 
@@ -57,7 +31,6 @@ class UrlController {
           throw new AppError('Invalid custom code format', 400);
         }
 
-        // Check if custom code already exists
         const exists = await UrlModel.exists(sanitized);
         if (exists) {
           throw new AppError('Custom short code already taken', 409);
@@ -66,11 +39,9 @@ class UrlController {
         shortCode = sanitized;
         isCustom = true;
       } else {
-        // Generate unique short code
         shortCode = await UrlModel.generateUniqueShortCode();
       }
 
-      // Calculate expiration date
       let expiresAt = null;
       if (expirationDays) {
         const expirationValidation = validateExpirationDays(expirationDays);
@@ -84,10 +55,8 @@ class UrlController {
         }
       }
 
-      // Get user IP
       const userIp = req.ip || req.connection.remoteAddress;
 
-      // Create URL in database
       const newUrl = await UrlModel.create({
         originalUrl,
         shortCode,
@@ -96,10 +65,11 @@ class UrlController {
         isCustom,
       });
 
-      // Cache the URL in Redis (TTL: 24 hours)
       await cacheSet(`url:${shortCode}`, originalUrl, 86400);
 
-      // Generate short URL
+      // Increment URLs created counter
+      urlsCreatedTotal.inc();
+
       const shortUrl = `${process.env.BASE_URL}/${shortCode}`;
 
       res.status(201).json({
@@ -117,10 +87,6 @@ class UrlController {
     }
   }
 
-  /**
-   * Redirect to original URL
-   * GET /:shortCode
-   */
   static async redirectUrl(req, res, next) {
     try {
       const { shortCode } = req.params;
@@ -129,14 +95,15 @@ class UrlController {
         throw new AppError('Short code is required', 400);
       }
 
-      // Try to get from Redis cache first
       let originalUrl = await cacheGet(`url:${shortCode}`);
 
       if (originalUrl) {
         console.log(`Cache HIT for ${shortCode}`);
-        
-        // Increment click count asynchronously (don't wait)
-        UrlModel.incrementClickCount(shortCode).catch(err => 
+
+        // Increment redirect counter
+        urlRedirectsTotal.inc({ short_code: shortCode });
+
+        UrlModel.incrementClickCount(shortCode).catch(err =>
           console.error('Error incrementing click count:', err)
         );
 
@@ -145,27 +112,24 @@ class UrlController {
 
       console.log(`Cache MISS for ${shortCode}`);
 
-      // Get from database
       const urlRecord = await UrlModel.findByShortCode(shortCode);
 
       if (!urlRecord) {
         throw new AppError('Short URL not found', 404);
       }
 
-      // Check if URL has expired
       if (urlRecord.expires_at && new Date(urlRecord.expires_at) < new Date()) {
-        // Delete expired URL
         await cacheDel(`url:${shortCode}`);
         throw new AppError('This short URL has expired', 410);
       }
 
-      // Cache the URL for future requests
       await cacheSet(`url:${shortCode}`, urlRecord.original_url, 86400);
 
-      // Increment click count and update last accessed
+      // Increment redirect counter
+      urlRedirectsTotal.inc({ short_code: shortCode });
+
       await UrlModel.incrementClickCount(shortCode);
 
-      // Optional: Record detailed analytics
       const userIp = req.ip || req.connection.remoteAddress;
       const userAgent = req.get('User-Agent');
       const referrer = req.get('Referer') || req.get('Referrer');
@@ -177,17 +141,12 @@ class UrlController {
         referrer,
       }).catch(err => console.error('Error recording analytics:', err));
 
-      // Redirect to original URL
       res.redirect(301, urlRecord.original_url);
     } catch (error) {
       next(error);
     }
   }
 
-  /**
-   * Get URL details (optional - for debugging)
-   * GET /api/url/:shortCode
-   */
   static async getUrlDetails(req, res, next) {
     try {
       const { shortCode } = req.params;
@@ -215,10 +174,6 @@ class UrlController {
     }
   }
 
-  /**
-   * Get user's URL history (optional)
-   * GET /api/my-urls
-   */
   static async getMyUrls(req, res, next) {
     try {
       const userIp = req.ip || req.connection.remoteAddress;

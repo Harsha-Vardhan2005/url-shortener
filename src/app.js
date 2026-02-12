@@ -6,6 +6,7 @@ const urlRoutes = require('./routes/urlRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const { redirectLimiter } = require('./middleware/rateLimiter');
 const { errorHandler, notFoundHandler, asyncHandler } = require('./middleware/errorHandler');
+const { client, httpRequestsTotal, httpRequestDuration } = require('./config/metrics');
 
 // Create Express app
 const app = express();
@@ -23,6 +24,22 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 // Request logging middleware (simple version)
 app.use((req, res, next) => {
+  const end = httpRequestDuration.startTimer();
+  const route = req.path;
+
+  res.on('finish', () => {
+    httpRequestsTotal.inc({
+      method: req.method,
+      route: route,
+      status_code: res.statusCode,
+    });
+    end({
+      method: req.method,
+      route: route,
+      status_code: res.statusCode,
+    });
+  });
+
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
@@ -34,6 +51,12 @@ app.get('/health', (req, res) => {
     message: 'Server is running',
     timestamp: new Date().toISOString(),
   });
+});
+
+// Prometheus metrics endpoint
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', client.register.contentType);
+  res.end(await client.register.metrics());
 });
 
 // API Routes
