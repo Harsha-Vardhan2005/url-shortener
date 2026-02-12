@@ -158,7 +158,7 @@ The application exposes production-grade metrics through Prometheus and visualiz
   </tr>
   <tr>
     <td width="50%">
-      <img src="results/monitoring/Latency.png" alt="P95 Latency"/>
+      <img src="results/Latency.png" alt="P95 Latency"/>
       <p align="center"><i>95th percentile request latency tracking</i></p>
     </td>
     <td width="50%">
